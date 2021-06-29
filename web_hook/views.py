@@ -114,7 +114,7 @@ def rapyd_signature(body, http_method, path):
     return headers
 
 @csrf_exempt
-@require_http_methods(["GET"])
+@require_http_methods(["POST"])
 # def get_rapyd_url_payment(products_input, merchant_reference_id, booking_uuid):
 def get_rapyd_url_payment(request):
     """
@@ -125,35 +125,10 @@ def get_rapyd_url_payment(request):
         ]
     """
 
-    booking_uuid = str(uuid.uuid4())
+    products_input = json.loads(request.POST.get('products'))
+    merchant_reference_id = request.POST.get('merchant_reference_id')
+    booking_uuid = request.POST.get('booking_uuid')
 
-    merchant_reference_id = base64.urlsafe_b64encode(
-        hashlib.md5(os.urandom(128)).digest())[:6].decode('utf-8')
-
-    # products_input = {"name": "nilo river", "amount": "5.8",
-    #                   "image": "http://image1.com",
-    #                   "quantity": "2"},
-    # {"name": "amazon river", "amount": "3", "image": "http://image2.com",
-    #  "quantity": "1"}
-
-    rod_price = "5.8"
-
-    products_input = [
-        {"name": "nilo river",
-         "amount": int(rod_price) if float(rod_price) % 1 == 0 else rod_price,
-         "image": "https://is-fishing-web.s3-eu-west-1.amazonaws.com/media/images/%C3%9Erastalundur_2.jpg",
-         "quantity": 2}
-    ]
-
-    # try:
-    #     products1 = [ProductArgs(**p) for p in products_input]
-    # except TypeError as e:
-    #     return JsonResponse({
-    #         'status': 'fail',
-    #         'message': e.args[0]
-    #     })
-
-    # products2 = [vars(product) for product in products1]
 
     path = '/v1/checkout'  # Portion after the base URL.
     complete_checkout_url = f'{redirect_url}{booking_uuid}'
