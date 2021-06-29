@@ -3,9 +3,69 @@ from __future__ import unicode_literals
 from django.http import HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import copy
+import os
+import traceback
+from datetime import datetime, timedelta
+# from dateutil.parser import parse
+from dotenv import load_dotenv
+# import jwt
+import json
+# from flask import Flask, request
+# from argon2 import PasswordHasher
+# from argon2.exceptions import VerifyMismatchError
+from dataclasses import dataclass, asdict
+import uuid
+# from woocommerce import API
+
+import hashlib
+import base64
 import requests
+import calendar
+import string
+from random import *
+import hmac
+
+load_dotenv(override=True)
+
+
+RAPYD_ACCESS_KEY = os.environ["RAPYD_ACCESS_KEY"]
+RAPYD_SECRET_KEY = os.environ["RAPYD_SECRET_KEY"]
+
+dev = True
+
+if dev:
+    redirect_url = 'https://salmonzon.zaelot.com/payment/'
+else:
+    redirect_url = 'https://salmonzon.zaelot.com/payment/'
+
+base_url = 'https://sandboxapi.rapyd.net'
 
 url = 'http://509dce88d136.ngrok.io/payment-web-hook'
+
+
+@dataclass
+class RequestMixinV2:
+    @classmethod
+    def from_request(cls, request):
+        """
+        Helper method to convert an HTTP request to Dataclass Instance
+        """
+        values = request.get("input").get("data")
+        return cls(**values)
+
+    def to_json(self):
+        return json.dumps(asdict(self))
+
+
+@dataclass
+class ProductArgs(RequestMixinV2):
+    name: str
+    amount: float
+    image: str
+    quantity: int
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -16,3 +76,114 @@ def index(request):
         import logging
         logging.error('Rapyd code response' + str(r.status_code))
     return HttpResponse("Ok.")
+
+
+def rapyd_signature(body, http_method, path):
+    # idempotency_key = 'aee984befae64'  # Unique for each 'Create Payment' request.
+    idempotency_key = base64.urlsafe_b64encode(
+                    hashlib.md5(os.urandom(128)).digest())[:13].decode('utf-8')  # Unique for each 'Create Payment' request.
+
+    # salt: randomly generated for each request.
+    min_char = 8
+    max_char = 12
+    allchar = string.ascii_letters + string.punctuation + string.digits
+    salt = "".join(
+        choice(allchar) for x in range(randint(min_char, max_char)))
+
+    # Current Unix time.
+    d = datetime.utcnow()
+    timestamp = calendar.timegm(d.utctimetuple())
+
+    to_sign = http_method + path + salt + str(
+        timestamp) + RAPYD_ACCESS_KEY + RAPYD_SECRET_KEY + body
+
+    h = hmac.new(bytes(RAPYD_SECRET_KEY, 'utf-8'), bytes(to_sign, 'utf-8'),
+                 hashlib.sha256)
+
+    signature = base64.urlsafe_b64encode(str.encode(h.hexdigest()))
+
+    headers = {
+        'access_key': RAPYD_ACCESS_KEY,
+        'signature': signature,
+        'salt': salt,
+        'timestamp': str(timestamp),
+        'Content-Type': "application\/json",
+        'idempotency': idempotency_key
+    }
+
+    return headers
+
+@csrf_exempt
+@require_http_methods(["GET"])
+# def get_rapyd_url_payment(products_input, merchant_reference_id, booking_uuid):
+def get_rapyd_url_payment(request):
+    """
+    products format expected
+        products = [
+            {name: "nilo river", amount: "5.8", image: "http://image1.com", quantity: "2" },
+            {name: "amazon river", amount: "3", image: "http://image2.com", quantity: "1"}
+        ]
+    """
+
+    booking_uuid = str(uuid.uuid4())
+
+    merchant_reference_id = base64.urlsafe_b64encode(
+        hashlib.md5(os.urandom(128)).digest())[:6].decode('utf-8')
+
+    # products_input = {"name": "nilo river", "amount": "5.8",
+    #                   "image": "http://image1.com",
+    #                   "quantity": "2"},
+    # {"name": "amazon river", "amount": "3", "image": "http://image2.com",
+    #  "quantity": "1"}
+
+    rod_price = "5.8"
+
+    products_input = [
+        {"name": "nilo river",
+         "amount": int(rod_price) if float(rod_price) % 1 == 0 else rod_price,
+         "image": "https://is-fishing-web.s3-eu-west-1.amazonaws.com/media/images/%C3%9Erastalundur_2.jpg",
+         "quantity": 2}
+    ]
+
+    # try:
+    #     products1 = [ProductArgs(**p) for p in products_input]
+    # except TypeError as e:
+    #     return JsonResponse({
+    #         'status': 'fail',
+    #         'message': e.args[0]
+    #     })
+
+    # products2 = [vars(product) for product in products1]
+
+    path = '/v1/checkout'  # Portion after the base URL.
+    complete_checkout_url = f'{redirect_url}{booking_uuid}'
+    error_payment_url = f'{redirect_url}{booking_uuid}'
+
+    checkout_body = {}
+    checkout_body['currency'] = 'ISK'
+    checkout_body['country'] = 'IS'
+    checkout_body['complete_checkout_url'] = complete_checkout_url
+    checkout_body['error_payment_url'] = error_payment_url
+    checkout_body['cart_items'] = products_input
+    checkout_body['merchant_reference_id'] = merchant_reference_id
+    total_amount = sum(
+        [float(x['amount']) * int(x['quantity']) for x in products_input])
+    checkout_body['amount'] = int(
+        total_amount) if total_amount % 1 == 0 else total_amount
+
+    body = json.dumps(checkout_body, separators=(',', ':'))
+
+    url = base_url + path
+    headers = rapyd_signature(body=body, http_method='post', path=path)
+
+    r = requests.post(url, headers=headers, json=checkout_body)
+    if r.ok and r.json()['status']['status'] == 'SUCCESS':
+        return JsonResponse(r.json()['data']['redirect_url'], safe=False)
+    else:
+        import logging
+        logging.error(f'Rapyd code response {r.status_code}, \n'
+                      f'message {r.json()["status"]["response_code"]}\n'
+                      f'message {r.json()["status"]["message"]}\n'
+                      f'body for signature {body}\n'
+                      f'checkout_body for for rapyd {checkout_body}\n')
+
