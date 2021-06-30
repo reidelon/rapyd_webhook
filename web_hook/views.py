@@ -20,12 +20,15 @@ import calendar
 import string
 from random import *
 import hmac
+from django.conf import settings
+#load_dotenv(override=True)
 
-load_dotenv(override=True)
 
+#RAPYD_ACCESS_KEY = os.environ["RAPYD_ACCESS_KEY"]
+#RAPYD_SECRET_KEY = os.environ["RAPYD_SECRET_KEY"]
 
-RAPYD_ACCESS_KEY = os.environ["RAPYD_ACCESS_KEY"]
-RAPYD_SECRET_KEY = os.environ["RAPYD_SECRET_KEY"]
+RAPYD_ACCESS_KEY = settings.RAPYD_ACCESS_KEY
+RAPYD_SECRET_KEY = settings.RAPYD_SECRET_KEY
 
 dev = True
 
