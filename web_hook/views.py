@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+
+import logging
+import traceback
+
 from django.http import HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -82,27 +86,30 @@ def get_rapyd_url_payment(request):
             {name: "amazon river", amount: "3", image: "http://image2.com", quantity: "1"}
         ]
     """
+    try:
+        products_input = json.loads(request.POST['products'])
+        merchant_reference_id = request.POST['merchant_reference_id']
+        booking_uuid = request.POST['booking_uuid']
 
-    products_input = json.loads(request.POST.get('products'))
-    merchant_reference_id = request.POST.get('merchant_reference_id')
-    booking_uuid = request.POST.get('booking_uuid')
 
+        path = '/v1/checkout'  # Portion after the base URL.
+        complete_checkout_url = f'{redirect_url}{booking_uuid}'
+        error_payment_url = f'{redirect_url}{booking_uuid}'
 
-    path = '/v1/checkout'  # Portion after the base URL.
-    complete_checkout_url = f'{redirect_url}{booking_uuid}'
-    error_payment_url = f'{redirect_url}{booking_uuid}'
-
-    checkout_body = {}
-    checkout_body['currency'] = 'ISK'
-    checkout_body['country'] = 'IS'
-    checkout_body['complete_checkout_url'] = complete_checkout_url
-    checkout_body['error_payment_url'] = error_payment_url
-    checkout_body['cart_items'] = products_input
-    checkout_body['merchant_reference_id'] = merchant_reference_id
-    total_amount = sum(
-        [float(x['amount']) * int(x['quantity']) for x in products_input])
-    checkout_body['amount'] = int(
-        total_amount) if total_amount % 1 == 0 else total_amount
+        checkout_body = {}
+        checkout_body['currency'] = 'ISK'
+        checkout_body['country'] = 'IS'
+        checkout_body['complete_checkout_url'] = complete_checkout_url
+        checkout_body['error_payment_url'] = error_payment_url
+        checkout_body['cart_items'] = products_input
+        checkout_body['merchant_reference_id'] = merchant_reference_id
+        total_amount = sum(
+            [float(x['amount']) * int(x['quantity']) for x in products_input])
+        checkout_body['amount'] = int(
+            total_amount) if total_amount % 1 == 0 else total_amount
+    except Exception as e:
+        logging.error(traceback.format_exc())
+        return JsonResponse({"error": traceback.format_exc()}, safe=False, status=400)
 
     body = json.dumps(checkout_body, separators=(',', ':'))
 
@@ -110,13 +117,14 @@ def get_rapyd_url_payment(request):
     headers = rapyd_signature(body=body, http_method='post', path=path)
 
     r = requests.post(url, headers=headers, json=checkout_body)
-    if r.ok and r.json()['status']['status'] == 'SUCCESS':
-        return JsonResponse(r.json()['data']['redirect_url'], safe=False)
+    if r.status_code == 200 and r.json()['status']['status'] == 'SUCCESS':
+        return JsonResponse({"redirect_url": r.json()['data']['redirect_url']}, safe=False)
     else:
-        import logging
-        logging.error(f'Rapyd code response {r.status_code}, \n'
-                      f'message {r.json()["status"]["response_code"]}\n'
-                      f'message {r.json()["status"]["message"]}\n'
-                      f'body for signature {body}\n'
-                      f'checkout_body for for rapyd {checkout_body}\n')
+        error = f'Rapyd code response {r.status_code}, \n' \
+                f'message {r.json()["status"]["response_code"]}\n' \
+                f'message {r.json()["status"]["message"]}\n' \
+                f'body for signature {body}\n' \
+                f'checkout_body for for rapyd {checkout_body}\n'
+        logging.error(error)
+        return JsonResponse({"error": error}, safe=False, status=400)
 
