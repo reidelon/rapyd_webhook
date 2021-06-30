@@ -32,20 +32,6 @@ else:
 
 base_url = 'https://sandboxapi.rapyd.net'
 
-url = 'http://509dce88d136.ngrok.io/payment-web-hook'
-
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def index(request):
-    web_hook_data = request.POST
-    r = requests.post(url, json=web_hook_data)
-    if not r.ok:
-        import logging
-        logging.error('Rapyd code response' + str(r.status_code))
-    return HttpResponse("Ok.")
-
 
 def rapyd_signature(body, http_method, path):
     # idempotency_key = 'aee984befae64'  # Unique for each 'Create Payment' request.
