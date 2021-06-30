@@ -4,20 +4,10 @@ from django.http import HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-import copy
 import os
-import traceback
-from datetime import datetime, timedelta
-# from dateutil.parser import parse
+from datetime import datetime
 from dotenv import load_dotenv
-# import jwt
 import json
-# from flask import Flask, request
-# from argon2 import PasswordHasher
-# from argon2.exceptions import VerifyMismatchError
-from dataclasses import dataclass, asdict
-import uuid
-# from woocommerce import API
 
 import hashlib
 import base64
@@ -44,27 +34,6 @@ base_url = 'https://sandboxapi.rapyd.net'
 
 url = 'http://509dce88d136.ngrok.io/payment-web-hook'
 
-
-@dataclass
-class RequestMixinV2:
-    @classmethod
-    def from_request(cls, request):
-        """
-        Helper method to convert an HTTP request to Dataclass Instance
-        """
-        values = request.get("input").get("data")
-        return cls(**values)
-
-    def to_json(self):
-        return json.dumps(asdict(self))
-
-
-@dataclass
-class ProductArgs(RequestMixinV2):
-    name: str
-    amount: float
-    image: str
-    quantity: int
 
 
 @csrf_exempt
@@ -115,7 +84,6 @@ def rapyd_signature(body, http_method, path):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-# def get_rapyd_url_payment(products_input, merchant_reference_id, booking_uuid):
 def get_rapyd_url_payment(request):
     """
     products format expected
