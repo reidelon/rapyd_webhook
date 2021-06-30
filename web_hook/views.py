@@ -33,6 +33,10 @@ else:
 base_url = 'https://sandboxapi.rapyd.net'
 
 
+def ping(request):
+    return HttpResponse("pong")
+
+
 def rapyd_signature(body, http_method, path):
     # idempotency_key = 'aee984befae64'  # Unique for each 'Create Payment' request.
     idempotency_key = base64.urlsafe_b64encode(

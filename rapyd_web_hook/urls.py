@@ -16,9 +16,10 @@ Including another URLconf
 from django.conf.urls import url
 from django.contrib import admin
 # from django.conf import settings
-from web_hook.views import get_rapyd_url_payment
+from web_hook.views import ping, get_rapyd_url_payment
 
 urlpatterns = [
     #url(r'^admin/', admin.site.urls),
+    url(r'^ping/', ping),
     url(r'^get-rapyd-url-payment', get_rapyd_url_payment),
 ]
