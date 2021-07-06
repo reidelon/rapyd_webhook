@@ -26,6 +26,7 @@ from django.conf import settings
 
 #RAPYD_ACCESS_KEY = os.environ["RAPYD_ACCESS_KEY"]
 #RAPYD_SECRET_KEY = os.environ["RAPYD_SECRET_KEY"]
+from web_hook.models import Payment
 
 RAPYD_ACCESS_KEY = settings.RAPYD_ACCESS_KEY
 RAPYD_SECRET_KEY = settings.RAPYD_SECRET_KEY
@@ -115,6 +116,7 @@ def get_rapyd_url_payment(request):
         return JsonResponse({"error": traceback.format_exc()}, safe=False, status=400)
 
     body = json.dumps(checkout_body, separators=(',', ':'))
+    Payment.objects.create(payload_data=body)
 
     url = base_url + path
     headers = rapyd_signature(body=body, http_method='post', path=path)
