@@ -8,7 +8,7 @@ from .models import Payment
 
 class PaymentAdmin(admin.ModelAdmin):
     readonly_fields = ('updated_at', 'created_at')
-    list_display = ('form_url', 'created_at', 'updated_at')
+    list_display = ('form_url', 'created_at', 'updated_at', 'error')
 
 
 admin.site.register(Payment, PaymentAdmin)
