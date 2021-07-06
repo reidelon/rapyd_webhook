@@ -119,6 +119,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
 
-RAPYD_ACCESS_KEY = ""
-RAPYD_SECRET_KEY = ""
+
+RAPYD_ACCESS_KEY = "05F43A4CEC9F216889ED"
+RAPYD_SECRET_KEY = "af81a2afeda2eea6d9746d3842abae6b2fe7af8187f5e328d505297636523a25778a321f023228a6"
