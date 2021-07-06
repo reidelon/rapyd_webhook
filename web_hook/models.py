@@ -12,4 +12,4 @@ class Payment(models.Model):
     error = models.TextField(default='', blank=True)
 
     def __str__(self):
-        return self.form_url
+        return self.form_url or ''
