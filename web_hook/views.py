@@ -116,20 +116,25 @@ def get_rapyd_url_payment(request):
         return JsonResponse({"error": traceback.format_exc()}, safe=False, status=400)
 
     body = json.dumps(checkout_body, separators=(',', ':'))
-    Payment.objects.create(payload_data=body)
+    payment = Payment.objects.create(payload_data=body)
 
     url = base_url + path
     headers = rapyd_signature(body=body, http_method='post', path=path)
 
     r = requests.post(url, headers=headers, json=checkout_body)
     if r.status_code == 200 and r.json()['status']['status'] == 'SUCCESS':
-        return JsonResponse({"redirect_url": r.json()['data']['redirect_url']}, safe=False)
+        redirect_url = r.json()['data']['redirect_url']
+        payment.form_url = redirect_url
+        payment.save()
+        return JsonResponse({"redirect_url": redirect_url}, safe=False)
     else:
         error = f'Rapyd code response {r.status_code}, \n' \
                 f'message {r.json()["status"]["response_code"]}\n' \
                 f'message {r.json()["status"]["message"]}\n' \
                 f'body for signature {body}\n' \
                 f'checkout_body for for rapyd {checkout_body}\n'
+        payment.error = error
+        payment.save()
         logging.error(error)
         return JsonResponse({"error": error}, safe=False, status=400)
 
