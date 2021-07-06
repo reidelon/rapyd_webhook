@@ -30,13 +30,9 @@ from web_hook.models import Payment
 
 RAPYD_ACCESS_KEY = settings.RAPYD_ACCESS_KEY
 RAPYD_SECRET_KEY = settings.RAPYD_SECRET_KEY
+redirect_url = settings.REDIRECT_URL
 
-dev = True
 
-if dev:
-    redirect_url = 'https://salmonzon.zaelot.com/payment/'
-else:
-    redirect_url = 'https://salmonzon.zaelot.com/payment/'
 
 base_url = 'https://sandboxapi.rapyd.net'
 
