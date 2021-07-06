@@ -30,7 +30,7 @@ from web_hook.models import Payment
 
 RAPYD_ACCESS_KEY = settings.RAPYD_ACCESS_KEY
 RAPYD_SECRET_KEY = settings.RAPYD_SECRET_KEY
-redirect_url = settings.REDIRECT_URL
+
 
 
 
@@ -93,6 +93,7 @@ def get_rapyd_url_payment(request):
 
 
         path = '/v1/checkout'  # Portion after the base URL.
+        redirect_url = settings.REDIRECT_URL
         complete_checkout_url = f'{redirect_url}{booking_uuid}'
         error_payment_url = f'{redirect_url}{booking_uuid}'
 
